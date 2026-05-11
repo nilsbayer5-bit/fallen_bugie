@@ -30,31 +30,47 @@ export default function Dashboard(){
     setLoading(false)
   }
 
-  return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">fallen_budgie — Dashboard</h1>
-      {loading && <div>Loading…</div>}
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-        {scans.map(s => (
-          <div key={s.id} className="border rounded p-4 shadow-sm bg-white">
-            <div className="flex justify-between items-start">
-              <div>
-                <div className="text-lg font-semibold">{s.target}</div>
-                <div className="text-sm text-gray-500">{s.scan_type} — {s.status}</div>
-              </div>
-              <div>
-                <span className={"px-2 py-1 rounded text-sm font-medium "+(
-                  (severityFor(s)==='High')? 'bg-red-100 text-red-800':
-                  (severityFor(s)==='Medium')? 'bg-yellow-100 text-yellow-800':'bg-green-100 text-green-800'
-                )}>{severityFor(s)}</span>
-              </div>
-            </div>
-            <div className="mt-3 text-sm text-gray-700">
-              <div>Created: {s.created_at || '—'}</div>
-            </div>
-          </div>
-        ))}
+    return (
+      <div>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold">Dashboard</h1>
+          <Link to="/scan" className="inline-block bg-indigo-600 text-white px-4 py-2 rounded shadow-sm">New Scan</Link>
+        </div>
+
+        {loading && <div>Loading…</div>}
+
+        <div className="bg-white border rounded shadow-sm">
+          <table className="w-full table-auto">
+            <thead className="bg-gray-50 text-left text-sm text-gray-600">
+              <tr>
+                <th className="px-4 py-3">Target</th>
+                <th className="px-4 py-3">Type</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Severity</th>
+                <th className="px-4 py-3">Created</th>
+                <th className="px-4 py-3">Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              {scans.map(s => (
+                <tr key={s.id} className="border-t text-sm">
+                  <td className="px-4 py-3">{s.target}</td>
+                  <td className="px-4 py-3">{s.scan_type}</td>
+                  <td className="px-4 py-3">{s.status}</td>
+                  <td className="px-4 py-3">
+                    <span className={"px-2 py-1 rounded text-sm font-medium " + (
+                      (severityFor(s)==='High')? 'bg-red-100 text-red-800':
+                      (severityFor(s)==='Medium')? 'bg-yellow-100 text-yellow-800':'bg-green-100 text-green-800'
+                    )}>{severityFor(s)}</span>
+                  </td>
+                  <td className="px-4 py-3">{s.created_at || '—'}</td>
+                  <td className="px-4 py-3"><Link to={`/scans/${s.id}`} className="text-indigo-600">View</Link></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+    )
   )
 }
