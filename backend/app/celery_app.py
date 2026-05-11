@@ -8,6 +8,7 @@ celery = Celery(
     "fallen_budgie",
     broker=REDIS_URL,
     backend=REDIS_URL,
+    include=["backend.app.tasks", "app.tasks"],
 )
 
 # Optional: keep celery config here
