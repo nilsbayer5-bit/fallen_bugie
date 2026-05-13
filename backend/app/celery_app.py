@@ -2,7 +2,7 @@ from celery import Celery
 import os
 
 # Simple Celery factory using Redis. Configure with env vars if needed.
-REDIS_URL = os.getenv("FALLEN_BUDGIE_REDIS", "redis://localhost:6379/0")
+REDIS_URL = os.getenv("FALLEN_BUDGIE_REDIS", "redis://redis:6379/0")
 
 celery = Celery(
     "fallen_budgie",
