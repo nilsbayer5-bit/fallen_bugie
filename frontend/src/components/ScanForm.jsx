@@ -7,18 +7,24 @@ export default function ScanForm(){
   const [target, setTarget] = useState('')
   const [type, setType] = useState('network')
   const [loading, setLoading] = useState(false)
+  const [errorMsg, setErrorMsg] = useState(null)
+  const [created, setCreated] = useState(null)
   const navigate = useNavigate()
 
   async function submit(e){
     e.preventDefault()
     setLoading(true)
+    setErrorMsg(null)
     try{
       const res = await api.post('/scan', { target, scan_type: type })
+      setCreated(res.data)
       // navigate to detail page
       navigate(`/scans/${res.data.id}`)
     }catch(err){
       console.error(err)
-      alert('Failed to create scan')
+      const msg = err?.response?.data?.detail || err.message || 'Failed to create scan'
+      setErrorMsg(msg)
+      alert(`Failed to create scan: ${msg}`)
     }
     setLoading(false)
   }
@@ -40,6 +46,13 @@ export default function ScanForm(){
           <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded" disabled={loading}>{loading? 'Starting…' : 'Start Scan'}</button>
         </div>
       </form>
+      {errorMsg && <div className="mt-3 text-sm text-red-600">{errorMsg}</div>}
+      {created && (
+        <div className="mt-3 text-sm text-gray-700 border rounded p-3 bg-gray-50">
+          <div className="font-medium">Created scan id: {created.id}</div>
+          <pre className="text-xs mt-2">{JSON.stringify(created, null, 2)}</pre>
+        </div>
+      )}
     </div>
   )
 }

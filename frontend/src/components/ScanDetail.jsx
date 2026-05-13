@@ -47,7 +47,9 @@ export default function ScanDetail(){
   }
 
   if(loading) return <div>Loading…</div>
-  if(!scan) return <div className="text-gray-600">Scan not found</div>
+  if(!scan) {
+    return <div className="text-gray-600">Scan not found — check backend or that the id is correct.</div>
+  }
 
   return (
     <div>
