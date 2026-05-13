@@ -46,8 +46,18 @@ function NucleiList({nuclei}){
       </div>
     )
   }
-  // nuclei returned an object (likely an error)
-  return <div className="text-sm text-red-600">{nuclei.error || JSON.stringify(nuclei)}</div>
+  // nuclei returned an object (note/error/unparsed output)
+  if(nuclei.note) {
+    return (
+      <div className="mt-2 text-sm text-gray-700">
+        <div className="font-medium">{nuclei.note}</div>
+        {nuclei.matches !== undefined && <div className="text-xs text-gray-600 mt-1">Matches: {nuclei.matches}</div>}
+        {nuclei.stdout && <pre className="text-xs mt-2 bg-gray-50 p-2 rounded overflow-auto">{nuclei.stdout.slice(0, 2000)}</pre>}
+      </div>
+    )
+  }
+  if(nuclei.error) return <div className="text-sm text-red-600">{nuclei.error}</div>
+  return <div className="text-sm text-gray-700">{JSON.stringify(nuclei)}</div>
 }
 
 export default function ScanDetail(){

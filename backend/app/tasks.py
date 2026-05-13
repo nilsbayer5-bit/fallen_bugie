@@ -58,16 +58,37 @@ def scan_task(scan_id: int):
                 elif err:
                     logger.warning("nuclei stderr present (rc=%s): %s", rc, err[:1000])
 
-                findings = []
-                for line in out.splitlines():
-                    line = line.strip()
-                    if not line:
+                findings2 = []
+                ansi_re = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
+                pattern = re.compile(r'^\[(?P<template>[^\]]+)\]\s+\[(?P<proto>[^\]]+)\]\s+\[(?P<severity>[^\]]+)\]\s+(?P<target>.+)$')
+                for l in out.splitlines():
+                    clean_line = ansi_re.sub('', l).strip()
+                    if not clean_line:
                         continue
-                    try:
-                        findings.append(json.loads(line))
-                    except Exception:
-                        logger.debug("nuclei: could not parse line: %s", line)
-                        continue
+                    m = pattern.match(clean_line)
+                    if m:
+                        findings2.append({
+                            "template": m.group('template'),
+                            "proto": m.group('proto'),
+                            "severity": m.group('severity'),
+                            "target": m.group('target'),
+                            "raw": clean_line,
+                        })
+
+                if findings2:
+                    results["nuclei"] = findings2
+                else:
+                    # strip ANSI from full output and look for total matches summary
+                    out_clean = "\n".join([ansi_re.sub('', ln) for ln in out.splitlines()])
+                    m_total = re.search(r'Scan completed in .*? (?P<matches>\d+) matches found', out_clean)
+                    if m_total:
+                        matches = int(m_total.group('matches'))
+                        if matches == 0:
+                            results["nuclei"] = []
+                        else:
+                            results["nuclei"] = {"note": f"nuclei found {matches} matches (unparsed)", "matches": matches, "stdout": out_clean, "stderr": err, "returncode": rc}
+                    else:
+                        results["nuclei"] = {"note": "nuclei ran without -json but no parseable findings", "stdout": out_clean, "stderr": err, "returncode": rc}
 
                         # If nuclei returned non-zero and no JSON findings, record stdout/stderr/returncode for debugging
                         if rc != 0 and not findings:
