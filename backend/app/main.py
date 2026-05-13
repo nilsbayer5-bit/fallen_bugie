@@ -47,7 +47,17 @@ def create_scan(req: schemas.ScanRequest):
 def list_scans():
     db: Session = database.SessionLocal()
     rows = db.query(models.ScanJob).order_by(models.ScanJob.created_at.desc()).all()
-    return [schemas.ScanListItem.from_orm(r) for r in rows]
+    # Convert SQLAlchemy models to plain dicts so Pydantic v2 validation works
+    result = []
+    for r in rows:
+        result.append({
+            "id": r.id,
+            "target": r.target,
+            "scan_type": r.scan_type,
+            "status": r.status,
+            "created_at": r.created_at,
+        })
+    return result
 
 
 @app.get("/scans/{scan_id}", response_model=schemas.ScanDetail)
@@ -56,4 +66,11 @@ def get_scan(scan_id: int):
     scan = db.query(models.ScanJob).filter(models.ScanJob.id == scan_id).first()
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
-    return schemas.ScanDetail.from_orm(scan)
+    return {
+        "id": scan.id,
+        "target": scan.target,
+        "scan_type": scan.scan_type,
+        "status": scan.status,
+        "result": scan.result,
+        "created_at": scan.created_at,
+    }
