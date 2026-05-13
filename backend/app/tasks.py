@@ -88,21 +88,28 @@ def scan_task(scan_id: int):
                 elif err:
                     logger.warning("nuclei stderr present (rc=%s): %s", rc, err[:1000])
 
-                # Try JSON-lines parsing first
+                # Try JSON-lines parsing first: collect any JSON objects in stdout/stderr
                 findings = []
-                json_parse_ok = True
-                for line in out.splitlines():
+                for line in (out or "").splitlines():
                     line = line.strip()
                     if not line:
                         continue
                     try:
                         findings.append(json.loads(line))
                     except Exception:
-                        json_parse_ok = False
-                        findings = []
-                        break
+                        continue
 
-                if json_parse_ok and findings:
+                # sometimes JSONL can appear mixed; also check stderr just in case
+                for line in (err or "").splitlines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        findings.append(json.loads(line))
+                    except Exception:
+                        continue
+
+                if findings:
                     results["nuclei"] = findings
                 else:
                     # human-readable parsing: strip ANSI and parse per-line findings
