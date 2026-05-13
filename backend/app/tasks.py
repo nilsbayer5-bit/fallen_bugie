@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 import logging
 import subprocess
 import json
+import re
 from datetime import datetime, timedelta
 from croniter import croniter
 
@@ -89,17 +90,6 @@ def scan_task(scan_id: int):
                             results["nuclei"] = {"note": f"nuclei found {matches} matches (unparsed)", "matches": matches, "stdout": out_clean, "stderr": err, "returncode": rc}
                     else:
                         results["nuclei"] = {"note": "nuclei ran without -json but no parseable findings", "stdout": out_clean, "stderr": err, "returncode": rc}
-
-                        # If nuclei returned non-zero and no JSON findings, record stdout/stderr/returncode for debugging
-                        if rc != 0 and not findings:
-                            results["nuclei"] = {"error": "nuclei failed", "returncode": rc, "stderr": err, "stdout": out}
-                        else:
-                            # include stderr for diagnostics if present
-                            if err and not findings:
-                                results["nuclei"] = {"findings": findings, "stderr": err, "stdout": out, "returncode": rc}
-                            else:
-                                # if findings present use list, otherwise empty list
-                                results["nuclei"] = findings
             except FileNotFoundError:
                 results["nuclei"] = {"error": "nuclei binary not found"}
             except subprocess.TimeoutExpired:
