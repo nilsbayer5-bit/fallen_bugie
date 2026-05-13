@@ -1,11 +1,10 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
+/* Using Tailwind via CDN in dev; keep a few base rules here to avoid PostCSS/Tailwind directives. */
 html, body, #root {
   height: 100%;
 }
 
 body {
-  @apply bg-gray-50 font-sans text-gray-900;
+  background-color: #f9fafb; /* approximate tailwind gray-50 */
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  color: #111827; /* approximate tailwind gray-900 */
 }

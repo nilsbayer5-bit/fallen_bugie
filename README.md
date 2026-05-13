@@ -76,6 +76,8 @@ npm install
 npm run dev
 ```
 
+If you prefer a quicker local dev experience, the frontend currently loads Tailwind from the CDN (via `index.html`) so you don't need the PostCSS adapter for development. For production builds, install and configure the appropriate PostCSS adapter/plugin before building.
+
 By default the frontend expects the backend API at the URL in `VITE_API_BASE` (defaults to `http://localhost:8000`). You can edit `.env` to point to a different host/port.
 
 The frontend uses `src/lib/api.js` which reads `import.meta.env.VITE_API_BASE` and sets a central axios base client. This keeps components free of hardcoded hosts.
