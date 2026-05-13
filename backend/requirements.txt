@@ -6,3 +6,4 @@ SQLAlchemy>=2.0
 python-dotenv>=1.0
 python-nmap>=0.6
 requests>=2.28
+croniter>=1.4
