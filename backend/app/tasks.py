@@ -59,11 +59,20 @@ def scan_task(scan_id: int):
                 logger.debug("nuclei help probe failed")
 
             try:
-                use_json = bool(help_text and 'json' in help_text.lower())
-                if use_json:
+                help_lower = (help_text or "").lower()
+                json_flag = None
+                if help_lower:
+                    if re.search(r'(^|\s)-json(\s|,|$)', help_lower):
+                        json_flag = '-json'
+                    elif re.search(r'(^|\s)-jsonl(\s|,|$)', help_lower) or re.search(r'(^|\s)-j(\s|,|$)', help_lower):
+                        json_flag = '-jsonl'
+
+                if json_flag == '-json':
                     proc = subprocess.run(["nuclei", "-u", scan.target, "-json"], capture_output=True, text=True, timeout=300)
+                elif json_flag == '-jsonl':
+                    proc = subprocess.run(["nuclei", "-u", scan.target, "-jsonl"], capture_output=True, text=True, timeout=300)
                 else:
-                    logger.info("nuclei: -json flag not advertised; running without -json")
+                    logger.info("nuclei: no JSON output flag found; running human-readable mode")
                     proc = subprocess.run(["nuclei", "-u", scan.target], capture_output=True, text=True, timeout=600)
 
                 out = proc.stdout or ""
