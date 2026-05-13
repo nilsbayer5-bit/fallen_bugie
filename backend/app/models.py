@@ -18,6 +18,7 @@ class ScanJob(Base):
     is_scheduled = Column(Boolean, nullable=False, default=False)
     cron_schedule = Column(String, nullable=True)
     last_run_at = Column(DateTime(timezone=True), nullable=True)
+    risk_explanation = Column(String, nullable=True)
 
     status = Column(String, nullable=False, default="queued")
     result = Column(JSON, nullable=True)

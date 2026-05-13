@@ -60,15 +60,16 @@ def scan_task(scan_id: int):
                         logger.debug("nuclei: could not parse line: %s", line)
                         continue
 
-                # If nuclei returned non-zero and no JSON findings, record stderr/returncode for debugging
-                if rc != 0 and not findings:
-                    results["nuclei"] = {"error": "nuclei failed", "returncode": rc, "stderr": err}
-                else:
-                    # include stderr for diagnostics if present
-                    if err and not findings:
-                        results["nuclei"] = {"findings": findings, "stderr": err, "returncode": rc}
-                    else:
-                        results["nuclei"] = findings
+                        # If nuclei returned non-zero and no JSON findings, record stdout/stderr/returncode for debugging
+                        if rc != 0 and not findings:
+                            results["nuclei"] = {"error": "nuclei failed", "returncode": rc, "stderr": err, "stdout": out}
+                        else:
+                            # include stderr for diagnostics if present
+                            if err and not findings:
+                                results["nuclei"] = {"findings": findings, "stderr": err, "stdout": out, "returncode": rc}
+                            else:
+                                # if findings present use list, otherwise empty list
+                                results["nuclei"] = findings
             except FileNotFoundError:
                 results["nuclei"] = {"error": "nuclei binary not found"}
             except subprocess.TimeoutExpired:
@@ -80,7 +81,7 @@ def scan_task(scan_id: int):
         if "katana" in tools_to_run:
             results["katana"] = {"note": "not implemented in prototype"}
 
-        # compute overall risk
+        # compute overall risk and collect human-readable reasons
         def map_severity(s):
             if not s or not isinstance(s, str):
                 return None
@@ -96,47 +97,75 @@ def scan_task(scan_id: int):
             return None
 
         highest = "Safe"
+        reasons = []
 
-        # check nuclei findings
+        # check nuclei findings (handle list or dict error blobs)
         nuclei_findings = results.get("nuclei")
+        if isinstance(nuclei_findings, dict):
+            # possible shapes: {error:..., returncode:..., stderr:..., stdout:...} or {findings: [...], stderr: ...}
+            if nuclei_findings.get("error"):
+                rc = nuclei_findings.get("returncode")
+                msg = nuclei_findings.get("stderr") or nuclei_findings.get("stdout") or ""
+                reasons.append(f"nuclei error: {nuclei_findings.get('error')} (rc={rc}) {msg}".strip())
+            elif nuclei_findings.get("findings") is not None:
+                nuclei_list = nuclei_findings.get("findings")
+                if isinstance(nuclei_list, list):
+                    nuclei_findings = nuclei_list
+                else:
+                    nuclei_findings = []
+
         if isinstance(nuclei_findings, list):
             for f in nuclei_findings:
                 sev = None
+                name = None
                 if isinstance(f, dict):
-                    # nuclei JSON may contain top-level 'severity' or nested 'info':{'severity':...}
                     if isinstance(f.get("severity"), str):
                         sev = f.get("severity")
                     else:
                         info = f.get("info")
                         if isinstance(info, dict):
                             sev = info.get("severity") or info.get("level") or None
+                            name = info.get("name") or info.get("title") or None
+                    name = name or f.get("template") or f.get("name") or f.get("id")
                 mapped = map_severity(sev)
                 if mapped == "Critical":
                     highest = "Critical"
+                    reasons.append(f"Nuclei: {name or 'finding'} severity {mapped}")
                     break
                 if mapped == "High" and highest not in ("Critical", "High"):
                     highest = "High"
+                    reasons.append(f"Nuclei: {name or 'finding'} severity {mapped}")
                 if mapped == "Medium" and highest not in ("Critical", "High", "Medium"):
                     highest = "Medium"
+                    reasons.append(f"Nuclei: {name or 'finding'} severity {mapped}")
                 if mapped == "Low" and highest == "Safe":
                     highest = "Low"
+                    reasons.append(f"Nuclei: {name or 'finding'} severity {mapped}")
 
         # check nmap heuristic
         nmap_res = results.get("nmap")
         try:
             for h in (nmap_res or {}).get("hosts", []):
+                host_label = h.get("host") or h.get("ip") or 'host'
                 for p in h.get("ports", []):
                     if p.get("port") == 22 and p.get("state") == "open":
                         if highest != "Critical":
                             highest = "High"
+                            reasons.append(f"Nmap: {host_label} port 22 open (High)")
                     if p.get("port") in (80, 443) and p.get("state") == "open":
                         if highest not in ("Critical", "High", "Medium"):
                             highest = "Medium"
+                            reasons.append(f"Nmap: {host_label} port {p.get('port')} open (Medium)")
         except Exception:
-            pass
+            logger.exception("nmap heuristic failed")
+
+        # finalise reason text
+        if not reasons:
+            reasons.append("No findings detected")
 
         scan.result = results
         scan.overall_risk = highest
+        scan.risk_explanation = "; ".join(reasons)
         scan.status = "done"
         scan.last_run_at = datetime.utcnow()
         db.add(scan)

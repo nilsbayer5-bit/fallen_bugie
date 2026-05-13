@@ -53,7 +53,7 @@ python -m celery -A backend.app.celery_app.celery worker -Q scans -l info
 5. Frontend: the `frontend/` folder contains a minimal scaffold. We recommend creating a Vite or CRA project and copying `src/components/Dashboard.jsx` and `src/App.jsx` in. Install `axios` and Tailwind as needed.
 
 Database schema changes note:
-- The `scanjobs` table schema was extended (new columns: `scan_mode`, `selected_tools`, `overall_risk`, `is_scheduled`, `cron_schedule`, `last_run_at`). If you have an existing `fallen_budgie.db` from earlier runs, delete it to let SQLAlchemy create the updated table automatically during development:
+- The `scanjobs` table schema was extended (new columns: `scan_mode`, `selected_tools`, `overall_risk`, `is_scheduled`, `cron_schedule`, `last_run_at`, `risk_explanation`). If you have an existing `fallen_budgie.db` from earlier runs, delete it to let SQLAlchemy create the updated table automatically during development:
 
 ```bash
 rm fallen_budgie.db

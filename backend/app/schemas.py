@@ -25,6 +25,7 @@ class ScanResponse(BaseModel):
     is_scheduled: Optional[bool]
     cron_schedule: Optional[str]
     overall_risk: Optional[str]
+    risk_explanation: Optional[str]
     created_at: Optional[datetime]
 
     model_config = {"from_attributes": True}
@@ -37,6 +38,7 @@ class ScanListItem(BaseModel):
     scan_mode: Optional[str]
     status: str
     overall_risk: Optional[str]
+    risk_explanation: Optional[str]
     is_scheduled: Optional[bool]
     created_at: Optional[datetime]
 
@@ -52,6 +54,7 @@ class ScanDetail(BaseModel):
     status: str
     result: Optional[Any]
     overall_risk: Optional[str]
+    risk_explanation: Optional[str]
     is_scheduled: Optional[bool]
     cron_schedule: Optional[str]
     created_at: Optional[datetime]

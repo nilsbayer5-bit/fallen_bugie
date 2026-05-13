@@ -53,6 +53,7 @@ def create_scan(req: schemas.ScanRequest):
         "is_scheduled": scan.is_scheduled,
         "cron_schedule": scan.cron_schedule,
         "overall_risk": scan.overall_risk,
+        "risk_explanation": scan.risk_explanation,
         "created_at": scan.created_at,
     }
 
@@ -71,6 +72,7 @@ def list_scans():
             "scan_mode": r.scan_mode,
             "status": r.status,
             "overall_risk": r.overall_risk,
+            "risk_explanation": r.risk_explanation,
             "is_scheduled": r.is_scheduled,
             "created_at": r.created_at,
         })
@@ -92,6 +94,7 @@ def get_scan(scan_id: int):
         "status": scan.status,
         "result": scan.result,
         "overall_risk": scan.overall_risk,
+        "risk_explanation": scan.risk_explanation,
         "is_scheduled": scan.is_scheduled,
         "cron_schedule": scan.cron_schedule,
         "created_at": scan.created_at,
@@ -128,6 +131,7 @@ def download_report(scan_id: int):
         "selected_tools": scan.selected_tools,
         "status": scan.status,
         "overall_risk": scan.overall_risk,
+        "risk_explanation": scan.risk_explanation,
         "result": scan.result,
         "created_at": str(scan.created_at),
     }
