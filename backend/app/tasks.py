@@ -5,6 +5,7 @@ import logging
 import subprocess
 import json
 import re
+import shutil
 from datetime import datetime, timedelta
 from croniter import croniter
 
@@ -42,13 +43,32 @@ def scan_task(scan_id: int):
             results["nmap"] = scanner.run_nmap_scan(scan.target)
 
         if "nuclei" in tools_to_run or scan.scan_type == "web":
-            # run nuclei via subprocess and parse JSON lines. capture stderr and returncode for diagnostics.
+            # Probe nuclei binary and choose JSON vs human-readable mode accordingly.
             try:
-                proc = subprocess.run(["nuclei", "-u", scan.target, "-json"], capture_output=True, text=True, timeout=300)
+                which_nuclei = shutil.which("nuclei")
+                logger.info("nuclei path: %s", which_nuclei)
+            except Exception:
+                which_nuclei = None
+
+            help_text = ""
+            try:
+                help_proc = subprocess.run(["nuclei", "-h"], capture_output=True, text=True, timeout=10)
+                help_text = (help_proc.stdout or "") + (help_proc.stderr or "")
+                logger.debug("nuclei help length=%d", len(help_text))
+            except Exception:
+                logger.debug("nuclei help probe failed")
+
+            try:
+                use_json = bool(help_text and 'json' in help_text.lower())
+                if use_json:
+                    proc = subprocess.run(["nuclei", "-u", scan.target, "-json"], capture_output=True, text=True, timeout=300)
+                else:
+                    logger.info("nuclei: -json flag not advertised; running without -json")
+                    proc = subprocess.run(["nuclei", "-u", scan.target], capture_output=True, text=True, timeout=600)
+
                 out = proc.stdout or ""
                 err = proc.stderr or ""
                 rc = proc.returncode
-                # Log at INFO so it's visible on typical worker loglevel; warn if non-zero or stderr present
                 logger.info("nuclei rc=%s stdout_len=%d stderr_len=%d", rc, len(out), len(err))
                 if rc != 0:
                     logger.warning("nuclei non-zero exit (rc=%s). stdout_len=%d stderr_len=%d", rc, len(out), len(err))
@@ -59,37 +79,54 @@ def scan_task(scan_id: int):
                 elif err:
                     logger.warning("nuclei stderr present (rc=%s): %s", rc, err[:1000])
 
-                findings2 = []
-                ansi_re = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
-                pattern = re.compile(r'^\[(?P<template>[^\]]+)\]\s+\[(?P<proto>[^\]]+)\]\s+\[(?P<severity>[^\]]+)\]\s+(?P<target>.+)$')
-                for l in out.splitlines():
-                    clean_line = ansi_re.sub('', l).strip()
-                    if not clean_line:
+                # Try JSON-lines parsing first
+                findings = []
+                json_parse_ok = True
+                for line in out.splitlines():
+                    line = line.strip()
+                    if not line:
                         continue
-                    m = pattern.match(clean_line)
-                    if m:
-                        findings2.append({
-                            "template": m.group('template'),
-                            "proto": m.group('proto'),
-                            "severity": m.group('severity'),
-                            "target": m.group('target'),
-                            "raw": clean_line,
-                        })
+                    try:
+                        findings.append(json.loads(line))
+                    except Exception:
+                        json_parse_ok = False
+                        findings = []
+                        break
 
-                if findings2:
-                    results["nuclei"] = findings2
+                if json_parse_ok and findings:
+                    results["nuclei"] = findings
                 else:
-                    # strip ANSI from full output and look for total matches summary
-                    out_clean = "\n".join([ansi_re.sub('', ln) for ln in out.splitlines()])
-                    m_total = re.search(r'Scan completed in .*? (?P<matches>\d+) matches found', out_clean)
-                    if m_total:
-                        matches = int(m_total.group('matches'))
-                        if matches == 0:
-                            results["nuclei"] = []
-                        else:
-                            results["nuclei"] = {"note": f"nuclei found {matches} matches (unparsed)", "matches": matches, "stdout": out_clean, "stderr": err, "returncode": rc}
+                    # human-readable parsing: strip ANSI and parse per-line findings
+                    ansi_re = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
+                    pattern = re.compile(r'^\[(?P<template>[^\]]+)\]\s+\[(?P<proto>[^\]]+)\]\s+\[(?P<severity>[^\]]+)\]\s+(?P<target>.+)$')
+                    findings2 = []
+                    for l in out.splitlines():
+                        clean_line = ansi_re.sub('', l).strip()
+                        if not clean_line:
+                            continue
+                        m = pattern.match(clean_line)
+                        if m:
+                            findings2.append({
+                                "template": m.group('template'),
+                                "proto": m.group('proto'),
+                                "severity": m.group('severity'),
+                                "target": m.group('target'),
+                                "raw": clean_line,
+                            })
+
+                    if findings2:
+                        results["nuclei"] = findings2
                     else:
-                        results["nuclei"] = {"note": "nuclei ran without -json but no parseable findings", "stdout": out_clean, "stderr": err, "returncode": rc}
+                        out_clean = "\n".join([ansi_re.sub('', ln) for ln in out.splitlines()])
+                        m_total = re.search(r'Scan completed in .*? (?P<matches>\d+) matches found', out_clean)
+                        if m_total:
+                            matches = int(m_total.group('matches'))
+                            if matches == 0:
+                                results["nuclei"] = []
+                            else:
+                                results["nuclei"] = {"note": f"nuclei found {matches} matches (unparsed)", "matches": matches, "stdout": out_clean, "stderr": err, "returncode": rc}
+                        else:
+                            results["nuclei"] = {"note": "nuclei ran but no parseable findings", "stdout": out_clean, "stderr": err, "returncode": rc}
             except FileNotFoundError:
                 results["nuclei"] = {"error": "nuclei binary not found"}
             except subprocess.TimeoutExpired:
