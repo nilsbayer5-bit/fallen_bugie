@@ -41,10 +41,14 @@ def scan_task(scan_id: int):
             results["nmap"] = scanner.run_nmap_scan(scan.target)
 
         if "nuclei" in tools_to_run or scan.scan_type == "web":
-            # run nuclei via subprocess and parse JSON lines
+            # run nuclei via subprocess and parse JSON lines. capture stderr and returncode for diagnostics.
             try:
                 proc = subprocess.run(["nuclei", "-u", scan.target, "-json"], capture_output=True, text=True, timeout=300)
                 out = proc.stdout or ""
+                err = proc.stderr or ""
+                rc = proc.returncode
+                logger.debug("nuclei rc=%s stdout_len=%d stderr_len=%d", rc, len(out), len(err))
+
                 findings = []
                 for line in out.splitlines():
                     line = line.strip()
@@ -53,9 +57,18 @@ def scan_task(scan_id: int):
                     try:
                         findings.append(json.loads(line))
                     except Exception:
-                        # ignore malformed lines
+                        logger.debug("nuclei: could not parse line: %s", line)
                         continue
-                results["nuclei"] = findings
+
+                # If nuclei returned non-zero and no JSON findings, record stderr/returncode for debugging
+                if rc != 0 and not findings:
+                    results["nuclei"] = {"error": "nuclei failed", "returncode": rc, "stderr": err}
+                else:
+                    # include stderr for diagnostics if present
+                    if err and not findings:
+                        results["nuclei"] = {"findings": findings, "stderr": err, "returncode": rc}
+                    else:
+                        results["nuclei"] = findings
             except FileNotFoundError:
                 results["nuclei"] = {"error": "nuclei binary not found"}
             except subprocess.TimeoutExpired:
@@ -69,7 +82,7 @@ def scan_task(scan_id: int):
 
         # compute overall risk
         def map_severity(s):
-            if not s:
+            if not s or not isinstance(s, str):
                 return None
             s = s.lower()
             if "critical" in s:
@@ -89,9 +102,14 @@ def scan_task(scan_id: int):
         if isinstance(nuclei_findings, list):
             for f in nuclei_findings:
                 sev = None
-                # nuclei typically includes 'info'/'severity' keys
                 if isinstance(f, dict):
-                    sev = f.get("severity") or f.get("info") or None
+                    # nuclei JSON may contain top-level 'severity' or nested 'info':{'severity':...}
+                    if isinstance(f.get("severity"), str):
+                        sev = f.get("severity")
+                    else:
+                        info = f.get("info")
+                        if isinstance(info, dict):
+                            sev = info.get("severity") or info.get("level") or None
                 mapped = map_severity(sev)
                 if mapped == "Critical":
                     highest = "Critical"

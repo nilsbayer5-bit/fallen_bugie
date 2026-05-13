@@ -1,5 +1,7 @@
+
 import nmap
 import logging
+from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
@@ -11,11 +13,17 @@ def run_nmap_scan(target: str) -> dict:
     """
     scanner = nmap.PortScanner()
     try:
+        # Normalize host in case a full URL was provided (strip scheme/path)
+        host = target
+        if isinstance(target, str) and (target.startswith('http://') or target.startswith('https://')):
+            parsed = urlparse(target)
+            host = parsed.hostname or parsed.netloc or target
+
         # Use -Pn to skip host discovery, --top-ports 100 for top 100 ports and -sV for service/version
         args = "-Pn --top-ports 100 -sV"
-        scan_result = scanner.scan(hosts=target, arguments=args)
+        scan_result = scanner.scan(hosts=host, arguments=args)
     except Exception as e:
-        logger.exception("nmap scan failed")
+        logger.exception("nmap scan failed for %s", target)
         return {"error": str(e)}
 
     # Parse results into a concise structure
