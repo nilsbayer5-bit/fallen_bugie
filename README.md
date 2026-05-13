@@ -67,6 +67,15 @@ cp .env.example .env
 npm run dev
 ```
 
+If you see an error like "It looks like you're trying to use `tailwindcss` directly as a PostCSS plugin", install the Tailwind PostCSS adapter and re-run install:
+
+```bash
+cd frontend
+npm install --save-dev @tailwindcss/postcss
+npm install
+npm run dev
+```
+
 By default the frontend expects the backend API at the URL in `VITE_API_BASE` (defaults to `http://localhost:8000`). You can edit `.env` to point to a different host/port.
 
 The frontend uses `src/lib/api.js` which reads `import.meta.env.VITE_API_BASE` and sets a central axios base client. This keeps components free of hardcoded hosts.
