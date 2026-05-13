@@ -1,5 +1,6 @@
 import React, {useEffect, useState} from 'react'
 import axios from 'axios'
+import api from '../lib/api'
 
 function severityFor(scan) {
   // Simple heuristic for demo: if port 22 open => High, 80/443 => Medium else Low
@@ -24,7 +25,7 @@ export default function Dashboard(){
   async function fetchScans(){
     setLoading(true)
     try{
-      const res = await axios.get('http://localhost:8000/scans')
+      const res = await api.get('/scans')
       setScans(res.data)
     }catch(e){ console.error(e) }
     setLoading(false)

@@ -1,5 +1,6 @@
 import React, {useEffect, useState} from 'react'
 import axios from 'axios'
+import api from '../lib/api'
 import { useParams } from 'react-router-dom'
 
 function PortList({hosts}){
@@ -39,7 +40,7 @@ export default function ScanDetail(){
   async function fetchScan(){
     setLoading(true)
     try{
-      const res = await axios.get(`http://localhost:8000/scans/${id}`)
+      const res = await api.get(`/scans/${id}`)
       setScan(res.data)
     }catch(e){ console.error(e) }
     setLoading(false)

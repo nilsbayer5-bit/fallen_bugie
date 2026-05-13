@@ -52,6 +52,26 @@ python -m celery -A backend.app.celery_app.celery worker -Q scans -l info
 
 5. Frontend: the `frontend/` folder contains a minimal scaffold. We recommend creating a Vite or CRA project and copying `src/components/Dashboard.jsx` and `src/App.jsx` in. Install `axios` and Tailwind as needed.
 
+## Frontend (Vite + Tailwind) — setup and run
+
+Prerequisites:
+- Node.js 18+ and npm or yarn
+
+Quick start (from repo root):
+
+```bash
+cd frontend
+npm install
+# Create a .env file from the example to override API base if needed
+cp .env.example .env
+npm run dev
+```
+
+By default the frontend expects the backend API at the URL in `VITE_API_BASE` (defaults to `http://localhost:8000`). You can edit `.env` to point to a different host/port.
+
+The frontend uses `src/lib/api.js` which reads `import.meta.env.VITE_API_BASE` and sets a central axios base client. This keeps components free of hardcoded hosts.
+
+
 ## How it works
 
 - POST `/scan` with JSON `{ "target": "1.2.3.4", "scan_type": "network" }` creates a DB record and enqueues a Celery task.

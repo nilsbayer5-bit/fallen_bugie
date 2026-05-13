@@ -1,5 +1,6 @@
 import React, {useState} from 'react'
 import axios from 'axios'
+import api from '../lib/api'
 import { useNavigate } from 'react-router-dom'
 
 export default function ScanForm(){
@@ -12,7 +13,7 @@ export default function ScanForm(){
     e.preventDefault()
     setLoading(true)
     try{
-      const res = await axios.post('http://localhost:8000/scan', { target, scan_type: type })
+      const res = await api.post('/scan', { target, scan_type: type })
       // navigate to detail page
       navigate(`/scans/${res.data.id}`)
     }catch(err){
