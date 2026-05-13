@@ -47,7 +47,16 @@ def scan_task(scan_id: int):
                 out = proc.stdout or ""
                 err = proc.stderr or ""
                 rc = proc.returncode
-                logger.debug("nuclei rc=%s stdout_len=%d stderr_len=%d", rc, len(out), len(err))
+                # Log at INFO so it's visible on typical worker loglevel; warn if non-zero or stderr present
+                logger.info("nuclei rc=%s stdout_len=%d stderr_len=%d", rc, len(out), len(err))
+                if rc != 0:
+                    logger.warning("nuclei non-zero exit (rc=%s). stdout_len=%d stderr_len=%d", rc, len(out), len(err))
+                    if out:
+                        logger.warning("nuclei stdout (truncated): %s", out[:1000])
+                    if err:
+                        logger.warning("nuclei stderr (truncated): %s", err[:1000])
+                elif err:
+                    logger.warning("nuclei stderr present (rc=%s): %s", rc, err[:1000])
 
                 findings = []
                 for line in out.splitlines():
